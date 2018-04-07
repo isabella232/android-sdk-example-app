@@ -1,33 +1,45 @@
 package com.vibes.androidsdkexampleapp.modelViewsTest;
 
-import android.util.Log;
+import android.arch.core.executor.testing.InstantTaskExecutorRule;
+import android.arch.lifecycle.Observer;
 
 import com.vibes.androidsdkexampleapp.R;
-import com.vibes.androidsdkexampleapp.controllers.ExampleControllerInterface;
-import com.vibes.androidsdkexampleapp.modelViews.ExampleViewModel;
+import com.vibes.androidsdkexampleapp.api.VibesAPIContract;
+import com.vibes.androidsdkexampleapp.model.SharedPrefsManager;
+import com.vibes.androidsdkexampleapp.modelViews.VibesViewModel;
 import com.vibes.vibes.Credential;
 import com.vibes.vibes.VibesListener;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import junit.framework.Assert;
 
-import io.reactivex.observers.TestObserver;
-import io.reactivex.subjects.PublishSubject;
-import io.reactivex.subjects.ReplaySubject;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestRule;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.MockitoAnnotations;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
+import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
- * Created by marius.pop on 10/11/17.
+ * Created by jean-michel.barbieri on 2/25/18
+ * Copyright (c) Vibes 2018 . All rights reserved.
+ * Last modified 12:33 AM
  */
-
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({Log.class})
+@RunWith(JUnit4.class)
 public class ExampleViewModelOnSuccessTest {
 
-    private class DummyController implements ExampleControllerInterface {
+    private class DummyController implements VibesAPIContract {
 
         @Override
         public void registerDevice(VibesListener<Credential> listener) {
@@ -51,200 +63,250 @@ public class ExampleViewModelOnSuccessTest {
         }
     }
 
-    private ExampleViewModel viewModel;
-    private PublishSubject<Object> registerDeviceClick = PublishSubject.create();
-    private PublishSubject<Object> registerPushClick = PublishSubject.create();
-    private ReplaySubject<String> firebaseTokenReplaySubject = ReplaySubject.create();
-    private DummyController controller = new DummyController();
+    private VibesViewModel viewModel;
+
+    @Rule
+    public TestRule rule = new InstantTaskExecutorRule();
 
     @Before
     public void setup() {
-        PowerMockito.mockStatic(Log.class);
-        viewModel = new ExampleViewModel(registerDeviceClick, registerPushClick,
-                firebaseTokenReplaySubject, controller);
+        MockitoAnnotations.initMocks(this);
+        viewModel = new VibesViewModel();
+        viewModel.setAPI(new DummyController());
     }
 
     @Test
     public void loadingBarGoesFromVisibleToGone() {
-        TestObserver<Boolean> observer = new TestObserver<>();
-        viewModel.displayLoadingBarObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValues(true, false);
+        List<Boolean> resultBooleans = new ArrayList<>();
+        Observer<Boolean> observer = resultBooleans::add;
+        viewModel.getDisplayLoadingBarVisible().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertEquals(Arrays.asList(true, false), resultBooleans);
     }
 
     @Test
     public void onRegDeviceWeGetCorrectDeviceId() {
-        TestObserver<String> observer = new TestObserver<>();
-        viewModel.devIdObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValue("device_id");
+        final String[] result = new String[1];
+        Observer<String> observer = value -> result[0] = value;
+        viewModel.getDeviceIDLabelValue().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertEquals("device_id", result[0]);
     }
 
     @Test
     public void onRegDeviceWeGetCorrectToken() {
-        TestObserver<String> observer = new TestObserver<>();
-        viewModel.authTokenObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValue("auth_token");
+        final String[] result = new String[1];
+        Observer<String> observer = value -> result[0] = value;
+        viewModel.getAuthTokenLabelValue().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertEquals("auth_token", result[0]);
     }
 
     @Test
     public void onRegDeviceWeSetRegBtnTextToUnregisterDevice() {
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.deviceRegBtnObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValue(R.string.btn_unregister_device);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getDeviceRegButtonName().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.btn_unregister_device;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onRegDeviceWeEnablePushRegBtn() {
-        TestObserver<Boolean> observer = new TestObserver<>();
-        viewModel.pushRegBtnEnabledObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValue(true);
+        final Boolean[] result = new Boolean[1];
+        Observer<Boolean> observer = aBoolean -> result[0] = aBoolean;
+        viewModel.getPushRegButtonEnabled().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertTrue(result[0]);
     }
 
     @Test
     public void onRegDeviceWeWeSetVibesBtnColorToVibesButtonCollor() {
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.pushRegBtnBgColorObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValue(R.color.vibesButtonColor);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegButtonColor().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.color.vibesButtonColor;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onUnregDeviceWeSetDevIdToNotRegistered() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<String> observer = new TestObserver<>();
-        viewModel.devIdObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue("[Not Registered]");
+        final String[] result = new String[1];
+        Observer<String> observer = value -> result[0] = value;
+        viewModel.getDeviceIDLabelValue().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        Assert.assertEquals("[Not Registered]", result[0]);
     }
 
     @Test
     public void onUnregDeviceWeSetAuthTokenToNotRegistered() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<String> observer = new TestObserver<>();
-        viewModel.authTokenObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue("[Not Registered]");
+        final String[] result = new String[1];
+        Observer<String> observer = value -> result[0] = value;
+        viewModel.getAuthTokenLabelValue().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        Assert.assertEquals("[Not Registered]", result[0]);
     }
 
     @Test
     public void onUnregDeviceWeSetRegBtnTextToRegisterDevice() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.deviceRegBtnObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue(R.string.btn_register_device);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getDeviceRegButtonName().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.btn_register_device;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onUnregDeviceWeDisablePushRegBtn() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Boolean> observer = new TestObserver<>();
-        viewModel.pushRegBtnEnabledObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue(false);
+        final Boolean[] result = new Boolean[1];
+        Observer<Boolean> observer = aBoolean -> result[0] = aBoolean;
+        viewModel.getPushRegButtonEnabled().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        assertFalse(result[0]);
     }
 
     @Test
     public void onUnregDeviceWeWeSetVibesBtnColorToDisabledVibesButtonCollor() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.pushRegBtnBgColorObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue(R.color.vibesDisabledButtonColor);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegButtonColor().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.color.vibesDisabledButtonColor;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onUnregDeviceWeWeSetPushRegBtnTextToRegisterPush() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.pushRegBtnObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue(R.string.btn_register_push);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegButtonName().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.btn_register_push;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onUnregDeviceWeWeSetPushRegLabelColorToRed() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.pushRegLabelBgColorObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue(R.color.red);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegLabelColor().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.color.red;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onUnregDeviceWeWeSetPushRegLabelTextToNotRegistered() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        viewModel.pushRegLabelObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Unregister Device Click");
-        observer.assertValue(R.string.not_registered);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegLabelValue().observeForever(observer);
+        viewModel.token = "[token]";
+        viewModel.registerDeviceButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.not_registered;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
-
     public void onPushRegPushRegBtnSetTextToUnregisterPush() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        viewModel.pushRegBtnObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Register Push Click");
-        observer.assertValue(R.string.btn_unregister_push);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegButtonName().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.btn_unregister_push;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onPushRegPushRegBtnSetPushLabelColorToGreen() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        viewModel.pushRegLabelBgColorObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Register Push Click");
-        observer.assertValue(R.color.green);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegLabelColor().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.color.green;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onPushRegPushRegBtnSetPushLabelTestToRegistered() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        viewModel.pushRegLabelObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Register Push Click");
-        observer.assertValue(R.string.registered);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegLabelValue().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.registered;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onPushUnregPushRegBtnSetTextToRegisterPush() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        registerPushClick.onNext("Simulate Register Push Click");
-        viewModel.pushRegBtnObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Unregister Push Click");
-        observer.assertValue(R.string.btn_register_push);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegButtonName().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        viewModel.isRegistered = true;
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.btn_register_push;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onPushUnregPushRegBtnSetPushLabelColorToRed() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        TestObserver<Integer> observer = new TestObserver<>();
-        registerPushClick.onNext("Simulate Register Push Click");
-        viewModel.pushRegLabelBgColorObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Unregister Push Click");
-        observer.assertValue(R.color.red);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegLabelColor().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        viewModel.isRegistered = true;
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.color.red;
+        Assert.assertEquals(expected, result[0]);
     }
 
     @Test
     public void onPushUnregPushRegBtnSetPushLabelTestToUnregistered() {
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        TestObserver<Integer> observer = new TestObserver<>();
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        registerPushClick.onNext("Simulate Register Push Click");
-        viewModel.pushRegLabelObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Unregister Push Click");
-        observer.assertValue(R.string.not_registered);
+        final Integer[] result = new Integer[1];
+        Observer<Integer> observer = value -> result[0] = value;
+        viewModel.getPushRegLabelValue().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        viewModel.isRegistered = true;
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertNotNull(result[0]);
+        Integer expected = R.string.not_registered;
+        Assert.assertEquals(expected, result[0]);
     }
 }

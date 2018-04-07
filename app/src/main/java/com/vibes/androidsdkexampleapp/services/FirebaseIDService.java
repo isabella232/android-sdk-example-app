@@ -1,30 +1,23 @@
 package com.vibes.androidsdkexampleapp.services;
-
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.FirebaseInstanceIdService;
+import com.vibes.androidsdkexampleapp.model.SharedPrefsManager;
 
 /**
- * Created by marius.pop on 10/12/17.
+ * Created by jean-michel.barbieri on 2/25/18
+ * Copyright (c) Vibes 2018 . All rights reserved.
+ * Last modified 12:33 AM
  */
-
 public class FirebaseIDService extends FirebaseInstanceIdService {
-
-    public final static String FIREBASE_TOKEN = "firebase_token";
 
     private final static String TAG = "FirebaseIDService";
 
     @Override
     public void onTokenRefresh() {
         String refreshedToken = FirebaseInstanceId.getInstance().getToken();
-        Intent intent = new Intent(FIREBASE_TOKEN);
-        intent.putExtra(FIREBASE_TOKEN, refreshedToken);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        SharedPrefsManager.getInstance(this).storeToken(refreshedToken);
         Log.d(TAG, "--> Token Refreshed: " + refreshedToken);
     }
 }

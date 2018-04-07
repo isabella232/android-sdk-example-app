@@ -3,6 +3,7 @@
     package="com.vibes.androidsdkexampleapp">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -12,7 +13,7 @@
         android:theme="@style/AppTheme">
 
         <activity
-            android:name=".views.ExampleViewActivity"
+            android:name=".activities.VibesActivity"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -24,7 +25,7 @@
         <!--Replace `[YOUR KEY GOES HERE]` with your Vibes key.-->
         <meta-data android:name="vibes_app_id" android:value="[YOUR KEY GOES HERE]" />
 
-        <activity android:name=".views.DeepLinkActivity"></activity>
+        <activity android:name=".activities.DeepLinkActivity"></activity>
 
         <service android:name=".services.FirebaseIDService">
             <intent-filter>

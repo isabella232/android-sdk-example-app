@@ -27,5 +27,5 @@ send out notifications.
 ## SDK Usage
 
 The part of this application that is most relevant to the SDK integration is in
-``ExampleController``.  In this file you can find calls to the Vibes SDK to
+``VibesAPI``.  In this file you can find calls to the Vibes SDK to
 register and unregister a device or a push notification.

@@ -1,4 +1,4 @@
-package com.vibes.androidsdkexampleapp.controllers;
+package com.vibes.androidsdkexampleapp.api;
 
 import android.util.Log;
 
@@ -7,10 +7,11 @@ import com.vibes.vibes.Vibes;
 import com.vibes.vibes.VibesListener;
 
 /**
- * Created by marius.pop on 10/6/17.
+ * Created by jean-michel.barbieri on 2/25/18
+ * Copyright (c) Vibes 2018 . All rights reserved.
+ * Last modified 12:33 AM
  */
-
-public class ExampleController implements ExampleControllerInterface {
+public class VibesAPI implements VibesAPIContract {
     @Override
     public void registerDevice(VibesListener<Credential> listener) {
         Vibes.getInstance().registerDevice(listener);

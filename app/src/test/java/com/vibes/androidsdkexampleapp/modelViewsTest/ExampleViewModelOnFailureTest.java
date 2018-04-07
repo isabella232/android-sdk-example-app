@@ -1,36 +1,42 @@
 package com.vibes.androidsdkexampleapp.modelViewsTest;
 
-import android.util.Log;
+import android.arch.core.executor.testing.InstantTaskExecutorRule;
+import android.arch.lifecycle.Observer;
+import android.content.Context;
 
-import com.vibes.androidsdkexampleapp.R;
-import com.vibes.androidsdkexampleapp.controllers.ExampleControllerInterface;
-import com.vibes.androidsdkexampleapp.modelViews.ExampleViewModel;
+import com.vibes.androidsdkexampleapp.api.VibesAPIContract;
+import com.vibes.androidsdkexampleapp.model.SharedPrefsManager;
+import com.vibes.androidsdkexampleapp.modelViews.VibesViewModel;
 import com.vibes.vibes.Credential;
 import com.vibes.vibes.VibesListener;
 
+import org.hamcrest.core.AnyOf;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
-import io.reactivex.observers.TestObserver;
-import io.reactivex.subjects.PublishSubject;
-import io.reactivex.subjects.ReplaySubject;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static junit.framework.Assert.assertEquals;
+import static org.mockito.Mockito.*;
+
 
 /**
- * Created by marius.pop on 10/16/17.
+ * Created by jean-michel.barbieri on 2/25/18
+ * Copyright (c) Vibes 2018 . All rights reserved.
+ * Last modified 12:33 AM
  */
-
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({Log.class})
+@RunWith(JUnit4.class)
 public class ExampleViewModelOnFailureTest {
 
-    private ExampleViewModel viewModel;
-    private PublishSubject<Object> registerDeviceClick = PublishSubject.create();
-    private PublishSubject<Object> registerPushClick = PublishSubject.create();
-    private ReplaySubject<String> firebaseTokenReplaySubject = ReplaySubject.create();
+    private VibesViewModel viewModel;
     private DummyControllerRegisterFails controllerRegisterFails =
             new DummyControllerRegisterFails();
     private DummyControllerUnregisterFails controllerUnregisterFails =
@@ -40,58 +46,64 @@ public class ExampleViewModelOnFailureTest {
     private DummyControllerUnregisterPushFails controllerUnregisterPushFails =
             new DummyControllerUnregisterPushFails();
 
+    @Rule
+    public TestRule rule = new InstantTaskExecutorRule();
+
     @Before
     public void setup() {
-        PowerMockito.mockStatic(Log.class);
+        MockitoAnnotations.initMocks(this);
+        viewModel = new VibesViewModel();
     }
 
     @Test
     public void loadingBarGoesFromVisibleToGoneOnRegisterFails() {
-        viewModel = new ExampleViewModel(registerDeviceClick, registerPushClick,
-                firebaseTokenReplaySubject, controllerRegisterFails);
-        TestObserver<Boolean> observer = new TestObserver<>();
-        viewModel.displayLoadingBarObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValues(true, false);
+        viewModel.setAPI(controllerRegisterFails);
+        List<Boolean> resultBooleans = new ArrayList<>();
+        Observer<Boolean> observer = resultBooleans::add;
+        viewModel.getDisplayLoadingBarVisible().observeForever(observer);
+        viewModel.registerDeviceButtonClicked();
+        assertEquals(Arrays.asList(true, false), resultBooleans);
     }
 
     @Test
     public void loadingBarGoesFromVisibleToGoneOnUnregisterFails() {
-        viewModel = new ExampleViewModel(registerDeviceClick, registerPushClick,
-                firebaseTokenReplaySubject, controllerUnregisterFails);
-        TestObserver<Boolean> observer = new TestObserver<>();
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        viewModel.displayLoadingBarObservable.subscribe(observer);
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        observer.assertValues(true, false);
+        viewModel.setAPI(controllerUnregisterFails);
+        List<Boolean> resultBooleans = new ArrayList<>();
+        Observer<Boolean> observer = resultBooleans::add;
+        viewModel.getDisplayLoadingBarVisible().observeForever(observer);
+        viewModel.token = "token";
+        viewModel.registerDeviceButtonClicked(); // I will call unregister if the token isn't empty
+        assertEquals(Arrays.asList(true, false), resultBooleans);
     }
 
     @Test
     public void loadingBarGoesFromVisibleToGoneOnRegisterPushFails() {
-        viewModel = new ExampleViewModel(registerDeviceClick, registerPushClick,
-                firebaseTokenReplaySubject, controllerRegisterPushFails);
-        TestObserver<Boolean> observer = new TestObserver<>();
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        viewModel.displayLoadingBarObservable.subscribe(observer);
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        registerPushClick.onNext("Simulate Register Push Click");
-        observer.assertValues(true, false);
+        viewModel.setAPI(controllerRegisterPushFails);
+        List<Boolean> resultBooleans = new ArrayList<>();
+        Observer<Boolean> observer = resultBooleans::add;
+        viewModel.getDisplayLoadingBarVisible().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.registerPushButtonClicked();
+        assertEquals(Arrays.asList(true, false), resultBooleans);
     }
 
     @Test
     public void loadingBarGoesFromVisibleToGoneOnUnregisterPushFails() {
-        viewModel = new ExampleViewModel(registerDeviceClick, registerPushClick,
-                firebaseTokenReplaySubject, controllerUnregisterPushFails);
-        TestObserver<Boolean> observer = new TestObserver<>();
-        registerDeviceClick.onNext("Simulate Register Device Click");
-        firebaseTokenReplaySubject.onNext("firebase_token");
-        registerPushClick.onNext("Simulate Register Push Click");
-        viewModel.displayLoadingBarObservable.subscribe(observer);
-        registerPushClick.onNext("Simulate Register Push Click");
-        observer.assertValues(true, false);
+        viewModel.setAPI(controllerUnregisterPushFails);
+        List<Boolean> resultBooleans = new ArrayList<>();
+        Observer<Boolean> observer = resultBooleans::add;
+        viewModel.getDisplayLoadingBarVisible().observeForever(observer);
+        SharedPrefsManager manager = mock(SharedPrefsManager.class);
+        viewModel.setSharedPrefs(manager);
+        when(manager.getToken()).thenReturn("[TOKEN]");
+        viewModel.isRegistered = true;
+        viewModel.registerPushButtonClicked();
+        assertEquals(Arrays.asList(true, false), resultBooleans);
     }
 
-    private class DummyControllerRegisterFails implements ExampleControllerInterface {
+    private class DummyControllerRegisterFails implements VibesAPIContract {
 
         @Override
         public void registerDevice(VibesListener<Credential> listener) {
@@ -111,29 +123,7 @@ public class ExampleViewModelOnFailureTest {
         }
     }
 
-    private class DummyControllerUnregisterFails implements ExampleControllerInterface {
-
-        @Override
-        public void registerDevice(VibesListener<Credential> listener) {
-            Credential credential = new Credential("device_id", "auth_token");
-            listener.onSuccess(credential);
-        }
-
-        @Override
-        public void unregisterDevice(VibesListener<Void> listener) {
-            listener.onFailure("Failure message");
-        }
-
-        @Override
-        public void registerPush(VibesListener<Void> listener, String firebasePushToken) {
-        }
-
-        @Override
-        public void unregisterPush(VibesListener<Void> listener) {
-        }
-    }
-
-    private class DummyControllerRegisterPushFails implements ExampleControllerInterface {
+    private class DummyControllerUnregisterFails implements VibesAPIContract {
 
         @Override
         public void registerDevice(VibesListener<Credential> listener) {
@@ -143,6 +133,28 @@ public class ExampleViewModelOnFailureTest {
 
         @Override
         public void unregisterDevice(VibesListener<Void> listener) {
+            listener.onFailure("Failure message");
+        }
+
+        @Override
+        public void registerPush(VibesListener<Void> listener, String firebasePushToken) {
+        }
+
+        @Override
+        public void unregisterPush(VibesListener<Void> listener) {
+        }
+    }
+
+    private class DummyControllerRegisterPushFails implements VibesAPIContract {
+
+        @Override
+        public void registerDevice(VibesListener<Credential> listener) {
+            Credential credential = new Credential("device_id", "auth_token");
+            listener.onSuccess(credential);
+        }
+
+        @Override
+        public void unregisterDevice(VibesListener<Void> listener) {
         }
 
         @Override
@@ -155,7 +167,7 @@ public class ExampleViewModelOnFailureTest {
         }
     }
 
-    private class DummyControllerUnregisterPushFails implements ExampleControllerInterface {
+    private class DummyControllerUnregisterPushFails implements VibesAPIContract {
 
         @Override
         public void registerDevice(VibesListener<Credential> listener) {
